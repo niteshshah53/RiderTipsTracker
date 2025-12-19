@@ -77,7 +77,7 @@ fun MainScreen() {
                         .padding(16.dp)
                 ) {
                     Text(
-                        "Rider Tips Tracker",
+                        "TipFlow",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(vertical = 16.dp)

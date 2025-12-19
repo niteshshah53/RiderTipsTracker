@@ -2,4 +2,16 @@
 <resources>
 
     <style name="Theme.RiderTipsTracker" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <!-- Splash Screen Theme - Shows immediately to prevent logo flash -->
+    <style name="Theme.Splash" parent="Theme.RiderTipsTracker">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

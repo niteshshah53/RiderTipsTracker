@@ -158,7 +158,7 @@ fun SettingsScreen(
                     )
                     
                     Text(
-                        "Rider Tips Tracker",
+                        "TipFlow",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )

@@ -27,7 +27,7 @@ class NotificationService @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Rider Tips Tracker",
+                "TipFlow",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Notifications for shifts and goals"
