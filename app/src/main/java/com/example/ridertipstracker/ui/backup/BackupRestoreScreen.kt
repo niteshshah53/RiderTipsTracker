@@ -1,4 +1,4 @@
-package com.example.ridertipstracker.ui.importexport
+package com.example.ridertipstracker.ui.backup
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,35 +18,29 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImportExportScreen(
+fun BackupRestoreScreen(
     onMenuClick: () -> Unit = {},
-    viewModel: ImportExportViewModel = hiltViewModel()
+    viewModel: BackupRestoreViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
-    
-    val importLauncher = rememberLauncherForActivityResult(
+
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let { viewModel.createBackup(it) }
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.importCsv(it, "") }
-    }
-    
-    val exportCsvLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri: Uri? ->
-        uri?.let { viewModel.exportCsv(it) }
-    }
-    
-    val exportPdfLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri: Uri? ->
-        uri?.let { viewModel.exportPdf(it) }
+        uri?.let { viewModel.restoreBackup(it) }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Import / Export", fontWeight = FontWeight.Bold) },
+                title = { Text("Backup & Restore", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
@@ -64,10 +57,8 @@ fun ImportExportScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Import Section
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // Backup Section
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -77,50 +68,45 @@ fun ImportExportScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            Icons.Default.Add,
+                            Icons.Default.Star,
                             contentDescription = null,
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Column {
                             Text(
-                                "Import CSV",
+                                "Backup Data",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Import shifts from a CSV file",
+                                "Create a backup of all your shifts and data",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    
+
                     Button(
-                        onClick = { importLauncher.launch("text/csv") },
+                        onClick = { backupLauncher.launch("rider_tips_backup_${System.currentTimeMillis()}.json") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isImporting
+                        enabled = !uiState.isBackingUp
                     ) {
-                        if (uiState.isImporting) {
+                        if (uiState.isBackingUp) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Importing...")
+                            Text("Creating Backup...")
                         } else {
-                            Icon(Icons.Default.Add, contentDescription = null)
+                            Icon(Icons.Default.Star, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Select CSV File")
+                            Text("Create Backup")
                         }
                     }
-                    
-                    // Import Status
-                    if (uiState.importSuccess) {
-                        LaunchedEffect(Unit) {
-                            kotlinx.coroutines.delay(3000)
-                            viewModel.clearImportStatus()
-                        }
+
+                    if (uiState.backupSuccess) {
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -128,23 +114,23 @@ fun ImportExportScreen(
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.Star,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "Successfully imported ${uiState.importedCount} shifts",
+                                    "Backup created successfully!",
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
                     }
-                    
-                    uiState.importError?.let { error ->
+
+                    uiState.backupError?.let { error ->
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
@@ -152,14 +138,14 @@ fun ImportExportScreen(
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.Info,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
                                     error,
                                     color = MaterialTheme.colorScheme.onErrorContainer
@@ -169,13 +155,11 @@ fun ImportExportScreen(
                     }
                 }
             }
-            
+
             Divider()
-            
-            // Export Section
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+
+            // Restore Section
+            Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -185,84 +169,54 @@ fun ImportExportScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            Icons.Default.Add,
+                            Icons.Default.Star,
                             contentDescription = null,
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.secondary
                         )
                         Column {
                             Text(
-                                "Export Data",
+                                "Restore Data",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Export all shifts to CSV or Text Report",
+                                "Restore your data from a backup file",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    
-                    Row(
+
+                    Text(
+                        "Warning: Restoring will add all shifts from the backup. Existing shifts will not be deleted.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+
+                    Button(
+                        onClick = { restoreLauncher.launch("application/json") },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        enabled = !uiState.isRestoring,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
                     ) {
-                        Button(
-                            onClick = { 
-                                exportCsvLauncher.launch("rider_tips_export_${System.currentTimeMillis()}.csv")
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !uiState.isExporting,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
+                        if (uiState.isRestoring) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onSecondary
                             )
-                        ) {
-                            if (uiState.isExporting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onSecondary
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Exporting...")
-                            } else {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("CSV")
-                            }
-                        }
-                        
-                        Button(
-                            onClick = { 
-                                exportPdfLauncher.launch("rider_tips_export_${System.currentTimeMillis()}.txt")
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !uiState.isExporting,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary
-                            )
-                        ) {
-                            if (uiState.isExporting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onTertiary
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Exporting...")
-                            } else {
-                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Report")
-                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text("Restoring...")
+                        } else {
+                            Icon(Icons.Default.Star, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Restore from Backup")
                         }
                     }
-                    
-                    // Export Status
-                    if (uiState.exportSuccess) {
-                        LaunchedEffect(Unit) {
-                            kotlinx.coroutines.delay(3000)
-                            viewModel.clearExportStatus()
-                        }
+
+                    if (uiState.restoreSuccess) {
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -270,23 +224,23 @@ fun ImportExportScreen(
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.Star,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "Successfully exported ${uiState.exportedCount} shifts",
+                                    "Data restored successfully!",
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
                     }
-                    
-                    uiState.exportError?.let { error ->
+
+                    uiState.restoreError?.let { error ->
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
@@ -294,14 +248,14 @@ fun ImportExportScreen(
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     Icons.Default.Info,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
                                     error,
                                     color = MaterialTheme.colorScheme.onErrorContainer
@@ -309,40 +263,6 @@ fun ImportExportScreen(
                             }
                         }
                     }
-                }
-            }
-            
-            // Info Card
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "CSV Format",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        "CSV files should include columns: Date, Start Time, End Time, Online Tips, Cash Tips, Orders. Date format: yyyy-MM-dd, Time format: HH:mm",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }

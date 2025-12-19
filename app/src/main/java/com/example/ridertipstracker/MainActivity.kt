@@ -60,6 +60,8 @@ fun MainScreen() {
     
     val navItems = listOf(
         BottomNavItem("dashboard", "Dashboard", Icons.Default.Home),
+        BottomNavItem("scheduler", "Scheduler", Icons.Default.DateRange),
+        BottomNavItem("goals", "Goals", Icons.Default.Star),
         BottomNavItem("reports", "Reports", Icons.AutoMirrored.Filled.List),
         BottomNavItem("prediction", "Prediction", Icons.Default.Star),
         BottomNavItem("settings", "Settings", Icons.Default.Settings)
@@ -133,20 +135,44 @@ fun MainScreen() {
                     onShiftSaved = { navController.popBackStack() }
                 )
             }
+            composable("scheduler") {
+                com.example.ridertipstracker.ui.scheduler.SchedulerScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+            composable("goals") {
+                com.example.ridertipstracker.ui.goals.GoalsScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
             composable("reports") {
-                ReportsScreen()
+                ReportsScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
             }
             composable("prediction") {
-                PredictionScreen()
+                PredictionScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
             }
             composable("settings") {
                 SettingsScreen(
                     onImportClick = { navController.navigate("import_export") },
-                    onExportClick = { navController.navigate("import_export") }
+                    onExportClick = { navController.navigate("import_export") },
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onBackupClick = { navController.navigate("backup_restore") },
+                    onRestoreClick = { navController.navigate("backup_restore") }
+                )
+            }
+            composable("backup_restore") {
+                com.example.ridertipstracker.ui.backup.BackupRestoreScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
                 )
             }
             composable("import_export") {
-                com.example.ridertipstracker.ui.importexport.ImportExportScreen()
+                com.example.ridertipstracker.ui.importexport.ImportExportScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
             }
         }
     }

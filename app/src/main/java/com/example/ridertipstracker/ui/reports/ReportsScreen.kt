@@ -30,6 +30,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
+    onMenuClick: () -> Unit = {},
     viewModel: ReportsViewModel = hiltViewModel()
 ) {
     val shifts by viewModel.filteredShifts.collectAsState()
@@ -42,6 +43,11 @@ fun ReportsScreen(
         topBar = { 
             TopAppBar(
                 title = { Text("Performance Reports") },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { /* Export functionality */ }) {
                         Icon(Icons.Default.Add, contentDescription = "Export")

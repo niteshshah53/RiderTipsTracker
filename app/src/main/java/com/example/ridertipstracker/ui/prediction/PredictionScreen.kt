@@ -19,6 +19,7 @@ import com.example.ridertipstracker.utils.ConfidenceLevel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PredictionScreen(
+    onMenuClick: () -> Unit = {},
     viewModel: PredictionViewModel = hiltViewModel()
 ) {
     val predictionResult by viewModel.predictionResult.collectAsState()
@@ -28,7 +29,12 @@ fun PredictionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tips Prediction", fontWeight = FontWeight.Bold) }
+                title = { Text("Tips Prediction", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                }
             )
         }
     ) { padding ->

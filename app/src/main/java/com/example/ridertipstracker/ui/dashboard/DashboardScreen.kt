@@ -52,6 +52,11 @@ fun DashboardScreen(
     val weeklyDailyTips by viewModel.weeklyDailyTips.collectAsState(initial = emptyList())
     val last3DaysTips by viewModel.last3DaysTips.collectAsState(initial = emptyList())
 
+    // Initialize achievements on first load
+    LaunchedEffect(Unit) {
+        // Achievements are initialized automatically
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
