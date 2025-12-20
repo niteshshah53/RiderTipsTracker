@@ -34,6 +34,9 @@ class RiderShiftRepository @Inject constructor(
 
     fun getAllShifts(): Flow<List<RiderShift>> = riderShiftDao.getAllShifts()
 
+    fun getRecentShifts(limit: Int = 3): Flow<List<RiderShift>> =
+        riderShiftDao.getRecentShifts(LocalDate.now(), limit)
+
     suspend fun getWeeklySummary(start: LocalDate, end: LocalDate): WeeklySummaryRaw =
         riderShiftDao.getWeeklySummary(start, end)
 

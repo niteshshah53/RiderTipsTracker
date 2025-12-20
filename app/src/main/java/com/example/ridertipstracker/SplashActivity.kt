@@ -41,7 +41,7 @@ class SplashActivity : ComponentActivity() {
 fun SplashScreen(onNavigate: () -> Unit) {
     // Show text immediately - no animation delay
     LaunchedEffect(key1 = true) {
-        delay(500) // Show splash for only 0.5 seconds
+        delay(300) // Show splash for only 0.3 seconds
         onNavigate()
     }
 

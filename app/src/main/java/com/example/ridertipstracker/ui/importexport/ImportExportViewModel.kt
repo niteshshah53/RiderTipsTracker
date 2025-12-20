@@ -27,7 +27,7 @@ class ImportExportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ImportExportUiState())
     val uiState: StateFlow<ImportExportUiState> = _uiState.asStateFlow()
     
-    fun importCsv(uri: Uri, defaultPlatform: String = "Uber Eats") {
+    fun importCsv(uri: Uri, defaultPlatform: String = "") {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isImporting = true, importError = null)
             try {

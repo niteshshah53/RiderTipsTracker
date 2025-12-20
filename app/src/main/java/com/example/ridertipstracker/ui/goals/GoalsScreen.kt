@@ -49,15 +49,16 @@ fun GoalsScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (goals.isEmpty()) {
+        val baseModifier = Modifier
+            .padding(padding)
+            .padding(16.dp)
+            .fillMaxSize()
+
+        if (goals.isEmpty()) {
+            Column(
+                modifier = baseModifier.verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -88,20 +89,24 @@ fun GoalsScreen(
                         )
                     }
                 }
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(
-                        items = goals,
-                        key = { goal -> goal.id }
-                    ) { goal ->
-                        val progress by viewModel.getGoalProgress(goal).collectAsState(initial = 0.0)
-                        GoalItem(
-                            goal = goal,
-                            currentProgress = progress,
-                            onEdit = { /* TODO */ },
-                            onDelete = { viewModel.deleteGoal(goal) }
-                        )
-                    }
+            }
+        } else {
+            LazyColumn(
+                modifier = baseModifier,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(
+                    items = goals,
+                    key = { goal -> goal.id }
+                ) { goal ->
+                    val progress by viewModel.getGoalProgress(goal).collectAsState(initial = 0.0)
+                    GoalItem(
+                        goal = goal,
+                        currentProgress = progress,
+                        onEdit = { /* TODO */ },
+                        onDelete = { viewModel.deleteGoal(goal) }
+                    )
                 }
             }
         }

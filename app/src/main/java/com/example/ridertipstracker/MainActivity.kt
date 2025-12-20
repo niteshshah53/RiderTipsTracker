@@ -60,7 +60,6 @@ fun MainScreen() {
     
     val navItems = listOf(
         BottomNavItem("dashboard", "Dashboard", Icons.Default.Home),
-        BottomNavItem("scheduler", "Scheduler", Icons.Default.DateRange),
         BottomNavItem("goals", "Goals", Icons.Default.Star),
         BottomNavItem("reports", "Reports", Icons.AutoMirrored.Filled.List),
         BottomNavItem("prediction", "Prediction", Icons.Default.Star),
@@ -120,6 +119,7 @@ fun MainScreen() {
                     onShiftClick = { shiftId ->
                         navController.navigate("edit_shift/$shiftId")
                     },
+                    onViewAllShiftsClick = { navController.navigate("reports") },
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
             }
@@ -133,11 +133,6 @@ fun MainScreen() {
                 AddShiftScreen(
                     shiftId = shiftId,
                     onShiftSaved = { navController.popBackStack() }
-                )
-            }
-            composable("scheduler") {
-                com.example.ridertipstracker.ui.scheduler.SchedulerScreen(
-                    onMenuClick = { scope.launch { drawerState.open() } }
                 )
             }
             composable("goals") {

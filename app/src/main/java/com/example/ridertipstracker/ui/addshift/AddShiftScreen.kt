@@ -33,6 +33,7 @@ fun AddShiftScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     // Load shift if editing, reset if adding new
     LaunchedEffect(shiftId) {
@@ -46,6 +47,8 @@ fun AddShiftScreen(
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             onShiftSaved()
+            // Reset the success state after navigation
+            viewModel.resetState()
         }
     }
 
@@ -173,13 +176,39 @@ fun AddShiftScreen(
             // Save Button
             Button(
                 onClick = { viewModel.saveShift() },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 enabled = !uiState.isSaving
             ) {
                 if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 } else {
                     Text("Save Shift")
+                }
+            }
+
+            // Delete Button (only when editing)
+            if (shiftId != null) {
+                OutlinedButton(
+                    onClick = {
+                        showDeleteConfirmDialog = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = ButtonDefaults.outlinedButtonBorder.brush,
+                        width = 1.dp
+                    )
+                ) {
+                    Text("Delete Shift")
                 }
             }
         }
@@ -212,6 +241,33 @@ fun AddShiftScreen(
             onTimeSelected = { hour, minute ->
                 viewModel.updateEndTime(LocalTime.of(hour, minute))
                 showEndTimePicker = false
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Shift") },
+            text = { Text("Are you sure you want to delete this shift? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        viewModel.deleteShift()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }

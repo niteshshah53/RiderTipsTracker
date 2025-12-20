@@ -35,6 +35,22 @@ class DashboardViewModel @Inject constructor(
     val monthlyTips: Flow<Double> = repository.getTotalTipsBetweenDates(startOfMonth, today)
         .map { it ?: 0.0 }
 
+    val fullDayCount: Flow<Int> = repository.getAllShifts().map { shifts ->
+        shifts.count { it.totalHours > 4.0 }
+    }
+
+    val halfDayCount: Flow<Int> = repository.getAllShifts().map { shifts ->
+        shifts.count { it.totalHours <= 4.0 }
+    }
+
+    val totalOrders: Flow<Int> = repository.getAllShifts().map { shifts ->
+        shifts.sumOf { it.orders }
+    }
+
+    val avgOrdersPerShift: Flow<Double> = repository.getAllShifts().map { shifts ->
+        if (shifts.isEmpty()) 0.0 else shifts.sumOf { it.orders }.toDouble() / shifts.size
+    }
+
     val avgTipsPerHour: Flow<Double> = repository.getAverageTipsPerHour()
         .map { it ?: 0.0 }
 
@@ -123,35 +139,25 @@ class DashboardViewModel @Inject constructor(
             }
         }
 
-    // Last 3 days tips
-    val last3DaysTips: Flow<List<DailyTips>> = repository.getShiftsBetweenDates(today.minusDays(2), today)
+    // Last 3 shifts (most recent)
+    private val recentDateFormatter = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
+    private val recentTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+
+    val last3Shifts: Flow<List<RecentShift>> = repository.getRecentShifts(3)
         .map { shifts ->
-            val dailyMap = shifts.groupBy { it.date }
-            (2 downTo 0).map { dayOffset ->
-                val date = today.minusDays(dayOffset.toLong())
-                val dayShifts = dailyMap[date] ?: emptyList()
-                val totalTips = dayShifts.sumOf { it.totalTips }
-                val dayName = when {
-                    date == today -> "Today"
-                    date == today.minusDays(1) -> "Yesterday"
-                    else -> when (date.dayOfWeek) {
-                        DayOfWeek.MONDAY -> "Mon"
-                        DayOfWeek.TUESDAY -> "Tue"
-                        DayOfWeek.WEDNESDAY -> "Wed"
-                        DayOfWeek.THURSDAY -> "Thu"
-                        DayOfWeek.FRIDAY -> "Fri"
-                        DayOfWeek.SATURDAY -> "Sat"
-                        DayOfWeek.SUNDAY -> "Sun"
-                    }
-                }
-                DailyTips(
-                    date = date,
-                    dayName = dayName,
-                    tips = totalTips,
-                    hasData = dayShifts.isNotEmpty()
+            shifts.map { shift ->
+                val dateLabel = shift.date.format(recentDateFormatter)
+                val timeRange = "${shift.shiftStartTime.format(recentTimeFormatter)} - ${shift.shiftEndTime.format(recentTimeFormatter)}"
+                RecentShift(
+                    id = shift.id,
+                    dateLabel = dateLabel,
+                    timeRange = timeRange,
+                    tips = shift.totalTips,
+                    shiftType = shift.shiftType
                 )
             }
         }
+
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -179,4 +185,12 @@ data class DailyTips(
     val dayName: String,
     val tips: Double,
     val hasData: Boolean
+)
+
+data class RecentShift(
+    val id: Long,
+    val dateLabel: String,
+    val timeRange: String,
+    val tips: Double,
+    val shiftType: String
 )

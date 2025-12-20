@@ -132,6 +132,32 @@ class AddShiftViewModel @Inject constructor(
         }
     }
 
+    fun deleteShift() {
+        val id = _uiState.value.shiftId ?: return
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isSaving = true, error = null) }
+                repository.deleteShift(RiderShift(
+                    id = id,
+                    date = _uiState.value.date ?: LocalDate.now(),
+                    platform = _uiState.value.platform,
+                    shiftStartTime = _uiState.value.startTime,
+                    shiftEndTime = _uiState.value.endTime,
+                    totalHours = _uiState.value.totalHours,
+                    onlineTips = _uiState.value.onlineTips,
+                    cashTips = _uiState.value.cashTips,
+                    totalTips = _uiState.value.totalTips,
+                    orders = _uiState.value.orders,
+                    shiftType = _uiState.value.shiftType,
+                    notes = _uiState.value.notes
+                ))
+                _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSaving = false, error = e.message) }
+            }
+        }
+    }
+
     private fun calculateHours(start: LocalTime, end: LocalTime): Double {
         val duration = Duration.between(start, end)
         val minutes = if (duration.isNegative) {
@@ -139,7 +165,10 @@ class AddShiftViewModel @Inject constructor(
         } else {
             duration.toMinutes()
         }
-        return String.format("%.2f", minutes / 60.0).toDouble()
+        val hours = minutes / 60.0
+        // Auto-deduct 30 minutes for long shifts (>= 8.5h -> 0.5h break)
+        val adjusted = if (hours >= 8.5) hours - 0.5 else hours
+        return String.format("%.2f", adjusted).toDouble()
     }
 }
 

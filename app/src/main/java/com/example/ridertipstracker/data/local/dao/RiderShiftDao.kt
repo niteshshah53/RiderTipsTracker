@@ -32,6 +32,9 @@ interface RiderShiftDao {
     @Query("SELECT * FROM rider_shifts ORDER BY date DESC")
     fun getAllShifts(): Flow<List<RiderShift>>
 
+    @Query("SELECT * FROM rider_shifts WHERE date <= :today ORDER BY date DESC, shiftStartTime DESC LIMIT :limit")
+    fun getRecentShifts(today: LocalDate, limit: Int): Flow<List<RiderShift>>
+
     @Query("SELECT * FROM rider_shifts WHERE id = :id")
     suspend fun getShiftById(id: Long): RiderShift?
 

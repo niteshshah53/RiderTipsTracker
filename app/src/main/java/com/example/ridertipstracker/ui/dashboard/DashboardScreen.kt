@@ -1,5 +1,6 @@
 package com.example.ridertipstracker.ui.dashboard
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
@@ -19,12 +22,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.background
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.ridertipstracker.viewmodels.DashboardViewModel
 import com.example.ridertipstracker.viewmodels.DailyTips
+import com.example.ridertipstracker.viewmodels.RecentShift
 import com.example.ridertipstracker.viewmodels.MonthlySummaryData
 import com.example.ridertipstracker.viewmodels.WeeklySummaryData
 import java.time.LocalDate
@@ -35,6 +40,7 @@ import java.time.format.DateTimeFormatter
 fun DashboardScreen(
     onAddShiftClick: () -> Unit,
     onShiftClick: (Long) -> Unit = {},
+    onViewAllShiftsClick: () -> Unit = {},
     onMenuClick: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
@@ -42,15 +48,17 @@ fun DashboardScreen(
     val weeklyTips by viewModel.weeklyTips.collectAsState(initial = 0.0)
     val monthlyTips by viewModel.monthlyTips.collectAsState(initial = 0.0)
     val avgTipsPerHour by viewModel.avgTipsPerHour.collectAsState(initial = 0.0)
-    val bestWeekday by viewModel.bestWeekday.collectAsState(initial = null)
-    val bestShiftType by viewModel.bestShiftType.collectAsState(initial = null)
+    val fullDayCount by viewModel.fullDayCount.collectAsState(initial = 0)
+    val halfDayCount by viewModel.halfDayCount.collectAsState(initial = 0)
+    val totalOrders by viewModel.totalOrders.collectAsState(initial = 0)
+    val avgOrdersPerShift by viewModel.avgOrdersPerShift.collectAsState(initial = 0.0)
     val totalShifts by viewModel.totalShifts.collectAsState(initial = 0)
     val averageTipsPerShift by viewModel.averageTipsPerShift.collectAsState(initial = 0.0)
     val weeklySummary by viewModel.weeklySummary.collectAsState(initial = WeeklySummaryData(0.0, 0, 0))
     val monthlySummary by viewModel.monthlySummary.collectAsState(initial = MonthlySummaryData(0.0, 0, 0))
     val upcomingShifts by viewModel.upcomingShifts.collectAsState(initial = emptyList())
-    val weeklyDailyTips by viewModel.weeklyDailyTips.collectAsState(initial = emptyList())
-    val last3DaysTips by viewModel.last3DaysTips.collectAsState(initial = emptyList())
+    val last3Shifts by viewModel.last3Shifts.collectAsState(initial = emptyList())
+    val scrollState = rememberScrollState()
 
     // Initialize achievements on first load
     LaunchedEffect(Unit) {
@@ -82,7 +90,8 @@ fun DashboardScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Card(
@@ -93,102 +102,32 @@ fun DashboardScreen(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Today's Earnings", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleMedium)
+                    Text("This Month's Earnings", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text("€${String.format("%.2f", todayTips)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("€${"%.2f".format(monthlyTips)}", color = MaterialTheme.colorScheme.onPrimary, fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
 
-            // Last 3 Days Tips - Always show
-            Last3DaysTipsCard(last3DaysTips)
+            // Last 3 Shifts - Always show
+            Last3ShiftsCard(last3Shifts, onShiftClick, onViewAllShiftsClick)
             
             // Weekly Summary Card with Trend
             WeeklySummaryCard(weeklySummary)
             
-            // Weekly Daily Breakdown
-            if (weeklyDailyTips.any { it.hasData }) {
-                WeeklyDailyBreakdownCard(weeklyDailyTips)
-            }
-            
             // Monthly Summary Card with Trend
             MonthlySummaryCard(monthlySummary)
+
+            // Upcoming Shifts (max 3)
+            UpcomingShiftsShortCard(upcomingShifts.take(3)) { id -> onShiftClick(id) }
             
-            // Upcoming Shifts Section - Always show
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "Upcoming Shifts",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    if (upcomingShifts.isEmpty()) {
-                        Text(
-                            "No upcoming shifts. Add a shift with a future date to see it here.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.heightIn(max = 200.dp)
-                        ) {
-                            items(upcomingShifts.take(5)) { shift ->
-                                UpcomingShiftItem(
-                                    shift = shift,
-                                    onClick = { onShiftClick(shift.id) }
-                                )
-                            }
-                        }
-                        
-                        if (upcomingShifts.size > 5) {
-                            Text(
-                                "And ${upcomingShifts.size - 5} more...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    StatCard("Avg Tips/h", "€${String.format("%.2f", avgTipsPerHour)}", Icons.Default.Info)
-                }
-                item {
-                    StatCard("Best Day", bestWeekday ?: "N/A", Icons.Default.Star)
-                }
-                item {
-                    StatCard("Best Shift", bestShiftType ?: "N/A", Icons.Default.Star)
-                }
-                item {
-                    StatCard("Total Shifts", "$totalShifts", Icons.AutoMirrored.Filled.List)
-                }
-            }
+            StatsTable(
+                avgTipsPerHour = avgTipsPerHour,
+                totalShifts = totalShifts,
+                fullDayCount = fullDayCount,
+                halfDayCount = halfDayCount,
+                totalOrders = totalOrders,
+                avgOrdersPerShift = avgOrdersPerShift
+            )
             
             // Quick Stats
             Card(
@@ -230,8 +169,6 @@ fun DashboardScreen(
                 }
             }
             
-            Spacer(Modifier.weight(1f))
-            
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 modifier = Modifier.fillMaxWidth()
@@ -254,15 +191,52 @@ fun DashboardScreen(
 }
 
 @Composable
-fun StatCard(label: String, value: String, icon: ImageVector) {
+fun StatsTable(
+    avgTipsPerHour: Double,
+    totalShifts: Int,
+    fullDayCount: Int,
+    halfDayCount: Int,
+    totalOrders: Int,
+    avgOrdersPerShift: Double
+) {
+    val stats = listOf(
+        "Avg Tips/h" to "€${String.format("%.2f", avgTipsPerHour)}",
+        "Full Days" to "$fullDayCount",
+        "Half Days" to "$halfDayCount",
+        "Total Shifts" to "$totalShifts",
+        "Total Orders" to "$totalOrders",
+        "Avg Orders/Shift" to String.format("%.1f", avgOrdersPerShift)
+    )
+
     Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall)
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Column {
+            stats.forEachIndexed { index, stat ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stat.first,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        stat.second,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (index != stats.lastIndex) {
+                    Divider()
+                }
+            }
         }
     }
 }
@@ -396,7 +370,11 @@ fun UpcomingShiftItem(
     shift: com.example.ridertipstracker.data.local.entity.RiderShift,
     onClick: () -> Unit
 ) {
-    val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    val dateFormatter = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        DateTimeFormatter.ofPattern("MMM dd, yyyy")
+    } else {
+        TODO("VERSION.SDK_INT < O")
+    }
     val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     val isToday = shift.date == LocalDate.now()
     
@@ -450,7 +428,11 @@ fun UpcomingShiftItem(
 }
 
 @Composable
-fun Last3DaysTipsCard(days: List<DailyTips>) {
+fun Last3ShiftsCard(
+    shifts: List<RecentShift>,
+    onShiftClick: (Long) -> Unit = {},
+    onViewAllShiftsClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -471,19 +453,64 @@ fun Last3DaysTipsCard(days: List<DailyTips>) {
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
-                    "Last 3 Days",
+                    "Last 3 Shifts",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                days.forEach { day ->
-                    DailyTipItem(day, isCompact = true)
+
+            if (shifts.isEmpty()) {
+                Text(
+                    "No recent shifts recorded.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    shifts.forEach { shift ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onShiftClick(shift.id) },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    shift.dateLabel,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    shift.timeRange,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    shift.shiftType,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                text = "€${"%.2f".format(shift.tips)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    TextButton(
+                        onClick = onViewAllShiftsClick,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("View all shifts")
+                    }
                 }
             }
         }
@@ -491,11 +518,14 @@ fun Last3DaysTipsCard(days: List<DailyTips>) {
 }
 
 @Composable
-fun WeeklyDailyBreakdownCard(days: List<DailyTips>) {
+fun UpcomingShiftsShortCard(
+    shifts: List<com.example.ridertipstracker.data.local.entity.RiderShift>,
+    onShiftClick: (Long) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -509,24 +539,128 @@ fun WeeklyDailyBreakdownCard(days: List<DailyTips>) {
                 Icon(
                     Icons.Default.DateRange,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "This Week - Daily Breakdown",
+                    "Upcoming Shifts",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    fontWeight = FontWeight.Bold
                 )
             }
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(7),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+
+            if (shifts.isEmpty()) {
+                Text(
+                    "No upcoming shifts. Add a shift with a future date to see it here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    shifts.forEach { shift ->
+                        UpcomingShiftItem(
+                            shift = shift,
+                            onClick = { onShiftClick(shift.id) }
+                        )
+                    }
+                }
+                if (shifts.size == 3) {
+                    Text(
+                        "Showing next 3 shifts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TipsOverMonthCard(days: List<DailyTips>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(days) { day ->
-                    DailyTipItem(day, isCompact = false)
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Last 30 Days Tips",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (days.isEmpty()) {
+                Text(
+                    "No data for the last 30 days.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val maxTips = days.maxOf { it.tips }.coerceAtLeast(1.0)
+                val barMaxHeight = 160.dp
+                val barColor = MaterialTheme.colorScheme.primary
+                val barBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(barMaxHeight),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    days.forEach { day ->
+                        val heightRatio = (day.tips / maxTips).toFloat().coerceIn(0f, 1f)
+                        val barHeight = (barMaxHeight * heightRatio).coerceAtLeast(3.dp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(barHeight)
+                                .background(barBg)
+                                .padding(horizontal = 1.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight()
+                                    .background(barColor)
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val firstDay = days.first().date.dayOfMonth
+                    val lastDay = days.last().date.dayOfMonth
+                    Text(
+                        "$firstDay",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "$lastDay",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

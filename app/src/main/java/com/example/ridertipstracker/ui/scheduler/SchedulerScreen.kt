@@ -50,15 +50,15 @@ fun SchedulerScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (recurringShifts.isEmpty()) {
+        if (recurringShifts.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(16.dp)
+                    .verticalScroll(scrollState)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -89,20 +89,29 @@ fun SchedulerScreen(
                         )
                     }
                 }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(
-                        items = recurringShifts,
-                        key = { shift -> shift.id }
-                    ) { shift ->
-                        RecurringShiftItem(
-                            shift = shift,
-                            onEdit = { viewModel.toggleShift(shift) },
-                            onDelete = { viewModel.deleteShift(shift) }
-                        )
-                    }
+            }
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom = 80.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                items(
+                    items = recurringShifts,
+                    key = { shift -> shift.id }
+                ) { shift ->
+                    RecurringShiftItem(
+                        shift = shift,
+                        onEdit = { viewModel.toggleShift(shift) },
+                        onDelete = { viewModel.deleteShift(shift) }
+                    )
                 }
             }
         }
@@ -281,6 +290,59 @@ fun AddRecurringShiftDialog(
         }
     )
 
-    // Time pickers would go here - simplified for now
+    // Time Picker Dialogs
+    if (showStartTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showStartTimePicker = false },
+            onTimeSelected = { hour, minute ->
+                startTime = LocalTime.of(hour, minute)
+                showStartTimePicker = false
+            },
+            initialHour = startTime.hour,
+            initialMinute = startTime.minute
+        )
+    }
+
+    if (showEndTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showEndTimePicker = false },
+            onTimeSelected = { hour, minute ->
+                endTime = LocalTime.of(hour, minute)
+                showEndTimePicker = false
+            },
+            initialHour = endTime.hour,
+            initialMinute = endTime.minute
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    onTimeSelected: (Int, Int) -> Unit,
+    initialHour: Int = 0,
+    initialMinute: Int = 0
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute
+    )
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = { onTimeSelected(state.hour, state.minute) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        },
+        text = {
+            TimePicker(state = state)
+        }
+    )
 }
 

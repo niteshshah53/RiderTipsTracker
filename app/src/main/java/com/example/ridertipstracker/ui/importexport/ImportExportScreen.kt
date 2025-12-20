@@ -26,10 +26,14 @@ fun ImportExportScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
     
+    // Allow multiple MIME types so CSVs are visible in more file managers
     val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let { viewModel.importCsv(it, "") }
+        uri?.let { picked ->
+            // Persist read permission for future imports
+            viewModel.importCsv(picked, "")
+        }
     }
     
     val exportCsvLauncher = rememberLauncherForActivityResult(
@@ -97,7 +101,7 @@ fun ImportExportScreen(
                     }
                     
                     Button(
-                        onClick = { importLauncher.launch("text/csv") },
+                        onClick = { importLauncher.launch(arrayOf("text/csv", "text/comma-separated-values", "application/csv", "application/vnd.ms-excel", "text/plain", "*/*")) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isImporting
                     ) {
